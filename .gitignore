@@ -1,2 +1,5 @@
-resources/
+resources
 bin/
+target
+project/project
+project/target
