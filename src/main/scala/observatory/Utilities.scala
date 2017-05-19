@@ -1,0 +1,5 @@
+package observatory
+
+object Utilities {
+  
+}
