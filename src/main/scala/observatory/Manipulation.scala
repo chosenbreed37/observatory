@@ -11,16 +11,25 @@ object Manipulation {
     *         returns the predicted temperature at this location
     */
   def makeGrid(temperatures: Iterable[(Location, Double)]): (Int, Int) => Double = {
-    ???
+    (lat, lon) => {
+      Visualization.predictTemperature(temperatures, Location(lat, lon))
+    }
   }
 
   /**
-    * @param temperaturess Sequence of known temperatures over the years (each element of the collection
+    * @param temperatures Sequence of known temperatures over the years (each element of the collection
     *                      is a collection of pairs of location and temperature)
     * @return A function that, given a latitude and a longitude, returns the average temperature at this location
     */
-  def average(temperaturess: Iterable[Iterable[(Location, Double)]]): (Int, Int) => Double = {
-    ???
+  def average(temperatures: Iterable[Iterable[(Location, Double)]]): (Int, Int) => Double = {
+    (lat, lon) => {
+      val (total, count) = temperatures.foldLeft(0d, 0)((acc, curr) => {
+        val (runningTotal, runningCount) = acc
+        val t = makeGrid(curr)(lat, lon)
+        (runningTotal + t, runningCount + 1)
+      })
+      total / count
+    }
   }
 
   /**
@@ -28,10 +37,14 @@ object Manipulation {
     * @param normals A grid containing the “normal” temperatures
     * @return A grid containing the deviations compared to the normal temperatures
     */
-  def deviation(temperatures: Iterable[(Location, Double)], normals: (Int, Int) => Double): (Int, Int) => Double = {
-    ???
+  def deviation(temperatures: Iterable[(Location, Double)],
+    normals: (Int, Int) => Double): (Int, Int) => Double = {
+    (lat, lon) => {
+      val c = makeGrid(temperatures)(lat, lon)
+      val r = normals(lat, lon)
+      c - r
+    }
   }
 
 
 }
-

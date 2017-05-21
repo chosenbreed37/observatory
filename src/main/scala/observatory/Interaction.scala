@@ -88,6 +88,9 @@ object Interaction {
     val colors = data._2
 
     val image = tile(temperatures, colors, zoom, x, y)
+    val filepath = s"target/temperatures/${year}/${zoom}"
+    val path = new java.io.File(filepath)
+    path.mkdirs()
     val filename = s"target/temperatures/${year}/${zoom}/${x}-${y}.png"
     val file = new java.io.File(filename)
     image.output(file)
@@ -117,9 +120,6 @@ object Interaction {
       val (year, data) = kv
       zoomLevels.toList.foreach(kv1 => {
         val (zoom, tiles) = kv1
-        val filepath = s"target/temperatures/${year}/${zoom}"
-        val path = new java.io.File(filepath)
-        path.mkdirs()
         tiles.toList.foreach(kv2 => {
           val (x, y) = kv2
           generateImage(year, zoom, x, y, data)

@@ -9,22 +9,22 @@ import scala.collection.concurrent.TrieMap
 
 @RunWith(classOf[JUnitRunner])
 class InteractionTest extends FunSuite with Checkers {
-  test("generateImage 1975 zoom 0") {
-    val year = 1975
-    val zoom = 2
-    val x = 1
-    val y = 2
-    val t0 = System.nanoTime()
-    val temperatures = Interaction.getTemperatures(1975)
-    val t1 = System.nanoTime()
-    println(s"getTemperatures: ${(t1 - t0)} ns")
-    val t2 = System.nanoTime()
-    // Interaction.generateImage(year, zoom, x, y, (temperatures, Interaction.colorScale))
-    val yearlyData = List((year, (temperatures, Interaction.colorScale)))
-    Interaction.generateTiles[Interaction.TemperatureData](yearlyData, Interaction.generateImage)
-    val t3 = System.nanoTime()
-    println(s"generateImage: ${(t3 - t2)} ns")
-  }
+  // test("generateImage 1975 zoom 0") {
+  //   val year = 1976
+  //   val zoom = 2
+  //   val x = 1
+  //   val y = 2
+  //   val t0 = System.nanoTime()
+  //   val temperatures = Interaction.getTemperatures(year)
+  //   val t1 = System.nanoTime()
+  //   println(s"getTemperatures: ${(t1 - t0)} ns")
+  //   val t2 = System.nanoTime()
+  //   // Interaction.generateImage(year, zoom, x, y, (temperatures, Interaction.colorScale))
+  //   val yearlyData = List((year, (temperatures, Interaction.colorScale)))
+  //   Interaction.generateTiles[Interaction.TemperatureData](yearlyData, Interaction.generateImage)
+  //   val t3 = System.nanoTime()
+  //   println(s"generateImage: ${(t3 - t2)} ns")
+  // }
 
   test("getZoomLevels 0") {
     val expected = (0, Vector((0, 0)))
