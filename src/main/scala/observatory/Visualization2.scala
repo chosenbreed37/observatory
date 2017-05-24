@@ -2,10 +2,20 @@ package observatory
 
 import com.sksamuel.scrimage.{Image, Pixel}
 
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+import org.apache.spark.rdd.RDD
+
+import java.time.LocalDate
+
 /**
   * 5th milestone: value-added information visualization
   */
 object Visualization2 {
+
+  @transient lazy val conf: SparkConf = new SparkConf().setMaster("local").setAppName("Observatory")
+  @transient lazy val sc: SparkContext = new SparkContext(conf)
 
   val colorScale: Iterable[(Double, Color)] =
     List(
@@ -98,5 +108,63 @@ object Visualization2 {
     Image(n, n, pixels)
   }
 
-  def computeNormals(): Unit = ???
+  lazy val normals = {
+    Extraction.locationYearlyAverageRecords((1975 to 1975)
+      .flatMap(year =>
+        Extraction.locateTemperatures(year, "/stations.csv", s"/${year}.csv"))
+    )
+  }
+
+  lazy val averages = Extraction.locationAverages(Extraction.locationYearlyAverages("/yearly-averages.csv"))
+
+  def computeNormals(start: Int, end: Int): Unit = {
+    val writer = new java.io.FileWriter("normals.csv")
+    println(s"${java.time.LocalTime.now}: computeNormals...")
+    Extraction.locationYearlyAverageRecords3((start to end)
+    .flatMap(year =>
+      Extraction.locationTemperatures(year)
+    ))
+    .map(v => s"${v._1.lat},${v._1.lon},${v._2}")
+    .foreach(l => {
+      writer.append(l)
+      writer.append("\n")
+    })
+    writer.flush()
+    writer.close()
+    println(s"${java.time.LocalTime.now}: computeNormals...completed")
+  }
+
+  def computeNormals2(start: Int, end: Int) = {
+    println(s"${java.time.LocalTime.now}: computeNormals2...")
+    val writer = new java.io.FileWriter("normals.csv", true)
+    (start to end).foreach(year => {
+      println(s"${java.time.LocalTime.now}: Processing ${year}...")
+      Extraction.locationYearlyAverageRecords3((year to year)
+        .flatMap(year =>
+          Extraction.locationTemperatures(year)
+      ))
+      .map(v => s"${v._1.lat},${v._1.lon},${v._2}")
+      .foreach(l => {
+        writer.append(l)
+        writer.append("\n")
+      })
+      println(s"${java.time.LocalTime.now}: Processing ${year}...completed")
+    })
+    writer.flush()
+    writer.close()
+    println(s"${java.time.LocalTime.now}: computeNormals2...completed")
+  }
+
+  def computeYearlyAverages(start: Int, end: Int): Iterable[Iterable[(Location, Double)]] = {
+    println(s"${java.time.LocalTime.now}: computeYearlyAverages...")
+    val init = List[Iterable[(Location, Double)]]()
+    val result = (start to end).foldLeft(init)((acc, year) => {
+      println(s"${java.time.LocalTime.now}: Processing ${year}...")
+      val avgs = Extraction.locationYearlyAverageRecords3(Extraction.locationTemperatures(year))
+      println(s"${java.time.LocalTime.now}: Processing ${year}...completed")
+      avgs::acc
+    })
+    println(s"${java.time.LocalTime.now}: computeYearlyAverages...completed")
+    result
+  }
 }
