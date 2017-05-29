@@ -5,6 +5,27 @@ package observatory
   */
 object Interaction2 {
 
+  val temperaturesScale = List(
+    (60d, Color(255, 255, 255)),
+    (32d, Color(255, 0, 0)),
+    (12d, Color(255, 255, 0)),
+    (0d, Color(0, 255, 255)),
+    (-15d, Color(0, 0, 255)),
+    (-27d, Color(255, 0, 255)),
+    (-50d, Color(33, 0, 107)),
+    (-60d, Color(0, 0, 0))
+  )
+
+  val deviationsScale: List[(Double, Color)] =
+    List(
+      (7, Color(0, 0, 0)),
+      (4, Color(255, 0, 0)),
+      (2, Color(255, 255, 0)),
+      (0, Color(255, 255, 255)),
+      (-2, Color(0, 255, 255)),
+      (-7, Color(0, 0, 255))
+    )
+
   /**
     * @return The available layers of the application
     */
@@ -12,13 +33,13 @@ object Interaction2 {
     val temperatures =
       Layer(
         LayerName.Temperatures,
-        Interaction.colorScale,
-        1975 to 2015
+        temperaturesScale,
+        1990 to 2015
       )
     val deviations =
       Layer(
         LayerName.Deviations,
-        Visualization2.colorScale,
+        deviationsScale,
         1990 to 2015
       )
     List(temperatures, deviations)
@@ -29,7 +50,7 @@ object Interaction2 {
     * @return A signal containing the year bounds corresponding to the selected layer
     */
   def yearBounds(selectedLayer: Signal[Layer]): Signal[Range] = {
-    ???
+    Signal(selectedLayer().bounds)
   }
 
   /**
@@ -41,7 +62,15 @@ object Interaction2 {
     *         in the `selectedLayer` bounds.
     */
   def yearSelection(selectedLayer: Signal[Layer], sliderValue: Signal[Int]): Signal[Int] = {
-    ???
+    Signal({
+      val bounds = yearBounds(selectedLayer)
+    val min = bounds().min
+    val max = bounds().max
+    sliderValue() match {
+      case x if x < min  => min
+      case x if x > max => max
+      case _ => sliderValue()
+    }})
   }
 
   /**
@@ -50,7 +79,7 @@ object Interaction2 {
     * @return The URL pattern to retrieve tiles
     */
   def layerUrlPattern(selectedLayer: Signal[Layer], selectedYear: Signal[Int]): Signal[String] = {
-    ???
+    Signal(s"target/${selectedLayer().layerName.id}/${selectedYear()}")
   }
 
   /**
@@ -59,7 +88,7 @@ object Interaction2 {
     * @return The caption to show
     */
   def caption(selectedLayer: Signal[Layer], selectedYear: Signal[Int]): Signal[String] = {
-    ???
+    Signal(s"${selectedLayer().layerName} (${selectedYear()})")
   }
 
 }
