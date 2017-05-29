@@ -9,7 +9,19 @@ object Interaction2 {
     * @return The available layers of the application
     */
   def availableLayers: Seq[Layer] = {
-    ???
+    val temperatures =
+      Layer(
+        LayerName.Temperatures,
+        Interaction.colorScale,
+        1975 to 2015
+      )
+    val deviations =
+      Layer(
+        LayerName.Deviations,
+        Visualization2.colorScale,
+        1990 to 2015
+      )
+    List(temperatures, deviations)
   }
 
   /**
@@ -64,4 +76,3 @@ object LayerName {
   * @param bounds Minimum and maximum year supported by the layer
   */
 case class Layer(layerName: LayerName, colorScale: Seq[(Double, Color)], bounds: Range)
-

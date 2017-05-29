@@ -1,21 +1,13 @@
 package observatory
 
 import com.sksamuel.scrimage.{Image, Pixel}
-
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
-import org.apache.spark.rdd.RDD
-
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
   * 5th milestone: value-added information visualization
   */
 object Visualization2 {
-
-  @transient lazy val conf: SparkConf = new SparkConf().setMaster("local").setAppName("Observatory")
-  @transient lazy val sc: SparkContext = new SparkContext(conf)
 
   val colorScale: Iterable[(Double, Color)] =
     List(
@@ -68,6 +60,46 @@ object Visualization2 {
       grid(points.d11._1, points.d11._2))
   }
 
+  def generateImage(grid: (Int, Int) => Double, year: Int, zoom: Int, x: Int, y: Int): Unit = {
+    val image = visualizeGrid(grid, colorScale, zoom, x, y)
+    val filepath = s"target/deviations/${year}/${zoom}"
+    val path = new java.io.File(filepath)
+    path.mkdirs()
+    val filename = s"target/deviations/${year}/${zoom}/${x}-${y}.png"
+    val file = new java.io.File(filename)
+    image.output(file)
+  }
+
+  def generateImageFake(grid: (Int, Int) => Double, year: Int, zoom: Int, x: Int, y: Int): Unit = {
+    println(s"${LocalTime.now}: generateImageFake...")
+    println(s"${LocalTime.now}: visualize grid fake...")
+    val image = visualizeGridFake(grid, colorScale, zoom, x, y)
+    val filepath = s"target/deviations/${year}/${zoom}"
+    val path = new java.io.File(filepath)
+    path.mkdirs()
+    val filename = s"target/deviations/${year}/${zoom}/${x}-${y}.png"
+    val file = new java.io.File(filename)
+    image.output(file)
+  }
+
+  def generateTiles(start: Int, end: Int,
+    generateImage: ((Int, Int) => Double, Int, Int, Int, Int) => Unit
+  ): Unit = {
+    val zoomLevels = Interaction.getZoomLevels(4)
+    (start to end).foreach(year => {
+      println(s"generating tiles for ${year}...")
+      val grid = Manipulation2.deviation(year, normals)
+      zoomLevels.toList.foreach(kv1 => {
+        val (zoom, tiles) = kv1
+        tiles.toList.foreach(kv2 => {
+          val (x, y) = kv2
+          generateImage(grid, year, zoom, x, y)
+        })
+      })
+      println(s"generating tiles for ${year}...completed")
+    })
+  }
+
   /**
     * @param grid Grid to visualize
     * @param colors Color scale to use
@@ -108,63 +140,92 @@ object Visualization2 {
     Image(n, n, pixels)
   }
 
-  lazy val normals = {
-    Extraction.locationYearlyAverageRecords((1975 to 1975)
-      .flatMap(year =>
-        Extraction.locateTemperatures(year, "/stations.csv", s"/${year}.csv"))
-    )
-  }
+  def visualizeGridFake(
+    grid: (Int, Int) => Double,
+    colors: Iterable[(Double, Color)],
+    zoom: Int,
+    x: Int,
+    y: Int
+  ): Image = {
+    val n = 128
+    val alpha = 127
+    val pixels = new Array[Pixel](n * n)
 
-  lazy val averages = Extraction.locationAverages(Extraction.locationYearlyAverages("/yearly-averages.csv"))
+    println(s"${LocalTime.now}: generate points...")
 
-  def computeNormals(start: Int, end: Int): Unit = {
-    val writer = new java.io.FileWriter("normals.csv")
-    println(s"${java.time.LocalTime.now}: computeNormals...")
-    Extraction.locationYearlyAverageRecords3((start to end)
-    .flatMap(year =>
-      Extraction.locationTemperatures(year)
-    ))
-    .map(v => s"${v._1.lat},${v._1.lon},${v._2}")
-    .foreach(l => {
-      writer.append(l)
-      writer.append("\n")
+    val points = for {
+      x1 <- 0 until n
+      y1 <- 0 until n
+    } yield (x1, y1)
+
+    val items = points.par.map(p => {
+      val (x1, y1) = p
+      val l = Interaction.tileLocation(zoom + 7, x * n + x1, y * n + y1)
+      val usp = unitSquarePoints(l.lat, l.lon)
+      val us = unitSquare(usp, grid)
+      val t = bilinearInterpolation(l.lon - usp.d00._2, usp.d00._1 - l.lat, us.d00, us.d01, us.d10, us.d11)
+      val c = Visualization.interpolateColor(colors, t)
+      (x1 + y1 * n, Pixel(c.red, c.green, c.blue, alpha))
     })
-    writer.flush()
-    writer.close()
-    println(s"${java.time.LocalTime.now}: computeNormals...completed")
-  }
-
-  def computeNormals2(start: Int, end: Int) = {
-    println(s"${java.time.LocalTime.now}: computeNormals2...")
-    val writer = new java.io.FileWriter("normals.csv", true)
-    (start to end).foreach(year => {
-      println(s"${java.time.LocalTime.now}: Processing ${year}...")
-      Extraction.locationYearlyAverageRecords3((year to year)
-        .flatMap(year =>
-          Extraction.locationTemperatures(year)
-      ))
-      .map(v => s"${v._1.lat},${v._1.lon},${v._2}")
-      .foreach(l => {
-        writer.append(l)
-        writer.append("\n")
-      })
-      println(s"${java.time.LocalTime.now}: Processing ${year}...completed")
+    println(s"${LocalTime.now}: construct the image...")
+    items.foreach(kv => {
+      val (i, p) = kv
+      pixels(i) = p
     })
-    writer.flush()
-    writer.close()
-    println(s"${java.time.LocalTime.now}: computeNormals2...completed")
+    Image(n, n, pixels).scaleTo(256, 256)
   }
 
   def computeYearlyAverages(start: Int, end: Int): Iterable[Iterable[(Location, Double)]] = {
-    println(s"${java.time.LocalTime.now}: computeYearlyAverages...")
+    println(s"${LocalTime.now}: computeYearlyAverages...")
     val init = List[Iterable[(Location, Double)]]()
     val result = (start to end).foldLeft(init)((acc, year) => {
-      println(s"${java.time.LocalTime.now}: Processing ${year}...")
+      println(s"${LocalTime.now}: Processing ${year}...")
       val avgs = Extraction.locationYearlyAverageRecords3(Extraction.locationTemperatures(year))
-      println(s"${java.time.LocalTime.now}: Processing ${year}...completed")
+      println(s"${LocalTime.now}: Processing ${year}...completed")
       avgs::acc
     })
-    println(s"${java.time.LocalTime.now}: computeYearlyAverages...completed")
+    println(s"${LocalTime.now}: computeYearlyAverages...completed")
     result
   }
+
+  def computeYearlyAverages2(start: Int, end: Int): Map[Int, Iterable[(Location, Double)]] = {
+    println(s"${LocalTime.now}: computeYearlyAverages2...")
+    val init = Map[Int, Iterable[(Location, Double)]]()
+    val result = (start to end).foldLeft(init)((acc, year) => {
+      println(s"${LocalTime.now}: Processing ${year}...")
+      val avgs = Extraction.locationYearlyAverageRecords3(Extraction.locationTemperatures(year))
+      println(s"${LocalTime.now}: Processing ${year}...completed")
+      acc + (year -> avgs)
+    })
+    println(s"${LocalTime.now}: computeYearlyAverages2...completed")
+    result
+  }
+
+  lazy val normals: (Int, Int) => Double = {
+    val result = Manipulation2.average(1975, 1989)
+    result
+  }
+
+  // lazy val deviations: (Int) => (Int, Int) => Double = {
+  //   val avgs = computeYearlyAverages2(1990, 2015)
+  //   (year) => {
+  //     avgs.get(year) match {
+  //       case Some(temperatures) => Manipulation2.deviation(temperatures, normals)
+  //       case _ => normals
+  //     }
+  //   }
+  // }
+
+  def computeDeviationsByYear(start: Int, end: Int): Map[Int, (Int, Int) => Double] = {
+    println(s"${LocalTime.now}: computing deviations...")
+    val result = computeYearlyAverages2(start, end)
+      .map(kv => {
+        val (year, temperatures) = kv
+        (year -> Manipulation2.deviation(temperatures, normals))
+      })
+    println(s"${LocalTime.now}: computing deviations...completed")
+    result
+  }
+
+  lazy val deviationsByYear = computeDeviationsByYear(1990, 2015)
 }

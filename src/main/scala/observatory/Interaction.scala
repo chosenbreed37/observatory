@@ -57,6 +57,30 @@ object Interaction {
       Image(n, n, pixels)
   }
 
+  def tile2(temperatures: Iterable[(Location, Double)],
+    colors: Iterable[(Double, Color)], zoom: Int, x: Int, y: Int): Image = {
+      val n = 128
+      val alpha = 127
+      val pixels = new Array[Pixel](n * n)
+
+      val points = for {
+        x1 <- 0 until n
+        y1 <- 0 until n
+      } yield (x1, y1)
+      val items = points.par.map(p => {
+        val (x1, y1) = p
+        val l = tileLocation(zoom + 7, x * n + x1, y * n + y1)
+        val t = Visualization.predictTemperature(temperatures, l)
+        val c = Visualization.interpolateColor(colors, t)
+        (x1 + y1 * n, Pixel(c.red, c.green, c.blue, alpha))
+      })
+      items.foreach(kv => {
+        val (i, p) = kv
+        pixels(i) = p
+      })
+      Image(n, n, pixels).scaleTo(256, 256)
+  }
+
     type TemperatureData = (Iterable[(Location, Double)], Iterable[(Double, Color)])
 
   val colorScale = List(
@@ -97,11 +121,18 @@ object Interaction {
     println(s">>> ${java.time.LocalTime.now} | Tile: (${x}-${y})")
   }
 
-  def generateImage2(year: Int, zoom: Int, x: Int, y: Int): Unit = {
-    val image = Image(256, 256)
+  def generateImage2(year: Int, zoom: Int, x: Int, y: Int, data: TemperatureData): Unit = {
+    val temperatures = data._1
+    val colors = data._2
+
+    val image = tile2(temperatures, colors, zoom, x, y)
+    val filepath = s"target/temperatures/${year}/${zoom}"
+    val path = new java.io.File(filepath)
+    path.mkdirs()
     val filename = s"target/temperatures/${year}/${zoom}/${x}-${y}.png"
     val file = new java.io.File(filename)
     image.output(file)
+    println(s">>> ${java.time.LocalTime.now} | Tile: (${x}-${y})")
   }
 
   /**
@@ -128,4 +159,16 @@ object Interaction {
     })
   }
 
+  def generateTiles(year: Int): Unit = {
+    val t0 = System.nanoTime()
+    val temperatures = Extraction.locationYearlyAverageRecords3(Extraction.locationTemperatures(year))
+    val t1 = System.nanoTime()
+    println(s"getTemperatures: ${(t1 - t0)} ns")
+    val t2 = System.nanoTime()
+    // Interaction.generateImage(year, zoom, x, y, (temperatures, Interaction.colorScale))
+    val yearlyData = List((year, (temperatures, Interaction.colorScale)))
+    Interaction.generateTiles[Interaction.TemperatureData](yearlyData, Interaction.generateImage2)
+    val t3 = System.nanoTime()
+    println(s"generateImage: ${(t3 - t2)} ns")
+  }
 }

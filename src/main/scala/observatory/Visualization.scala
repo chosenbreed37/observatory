@@ -49,10 +49,8 @@ object Visualization {
     def interpolateC(x0: Double, y0: Int, x1: Double, y1: Int): Int = {
       val num = BigDecimal(y0) * BigDecimal(x1 - x) + BigDecimal(y1) * BigDecimal(x - x0)
       val den = BigDecimal(x1 - x0)
-      // println(s"num, den : ${num} | ${den}")
       Math.round((num / den).toFloat)
     }
-    // println(s">>> interplate(${x}, ${p1}, ${p2})")
     val b = interpolateC(p1._1, p1._2.blue, p2._1, p2._2.blue)
     val r = interpolateC(p1._1, p1._2.red, p2._1, p2._2.red)
     val g = interpolateC(p1._1, p1._2.green, p2._1, p2._2.green)
@@ -70,10 +68,6 @@ object Visualization {
     val min = points1.minBy(p => p._1)
     val p1 = points1.sortWith(_._1 > _._1).find(x => x._1 <= value)
     val p2 = points1.sortWith(_._1 < _._1).find(x => x._1 > value)
-    // println(s">>> points: ${points}")
-    // println(s">>> value: ${value}")
-    // println(s">>> p1, p2: ${p1} | ${p2}")
-    // println(s">>> min, max: ${min} | ${max}")
     val c = (p1, p2) match {
       case (Some(r1), Some(r2)) => interpolate(value, r1, r2)
       case (None, Some(r2)) => min._2

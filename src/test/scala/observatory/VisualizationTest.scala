@@ -129,10 +129,4 @@ class VisualizationTest extends FunSuite with Checkers {
     assert(actual == expected)
   }
 
-  test("visualize 1") {
-    val temperatures = List((Location(45.0,-90.0),36.1643835403579), (Location(-45.0,0.0),-21.219052136494582))
-    val colors = List((36.1643835403579,Color(255,0,0)), (-21.219052136494582,Color(0,0,255)))
-    val image = Visualization.visualize(temperatures, colors)
-    // image.output(new java.io.File("target/visualize1.png"))
-  }
 }
