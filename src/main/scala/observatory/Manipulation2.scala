@@ -6,39 +6,37 @@ import java.time.LocalTime
   */
 object Manipulation2 {
 
-  def generateMapping(temperatures: Iterable[(Location, Double)]): scala.collection.mutable.Map[Location, Double] = {
-    val mapping = scala.collection.mutable.Map[Location, Double]()
-
+  def generateMapping(temperatures: Iterable[(Location, Double)]): Map[Location, Double] = {
     val points = for {
       lat <- 90 until -90 by -1
       lon <- -180 until 180
     } yield (lat, lon)
 
-    val items = points.par.map(p => {
+    points.par.map(p => {
       val (lat, lon) = p
       val loc = Location(lat, lon)
       val t = Visualization.predictTemperature(temperatures, loc)
-      mapping += (loc -> t)
+      (loc -> t)
     })
-    mapping
+    .seq
+    .toMap
   }
 
-  def getMapping(year: Int): scala.collection.mutable.Map[Location, Double] = {
+  def getMapping(year: Int): Map[Location, Double] = {
     val filepath = s"target/grids/"
     val filename = filepath + s"${year}.csv"
     val file = new java.io.File(filename)
     if (file.exists) {
-      val mapping = scala.collection.mutable.Map[Location, Double]()
       val stream = new java.io.FileInputStream(filename)
       val lines = scala.io.Source.fromInputStream(stream).getLines
-      lines.foreach(line => {
+      lines.map(line => {
         val values = line.split(",").map(_.trim)
         val lat = values(0).toDouble
         val lon = values(1).toDouble
         val t = values(2).toDouble
-        mapping += (Location(lat, lon) -> t)
+        (Location(lat, lon) -> t)
       })
-      mapping
+      .toMap
     } else {
       val path = new java.io.File(filepath)
       path.mkdirs()

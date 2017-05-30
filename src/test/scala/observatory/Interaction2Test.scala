@@ -58,7 +58,7 @@ class Interaction2Test extends FunSuite with Checkers {
   test("layerUrlPattern 1") {
     val selectedLayer = Signal(Interaction2.availableLayers.head)
     val selectedYear = Signal(1991)
-    val expected = Signal("target/temperatures/1991")
+    val expected = Signal("target/temperatures/1991/{z}/{x}-{y}.png")
     val actual = Interaction2.layerUrlPattern(selectedLayer, selectedYear)
     assert(actual() == expected())
   }

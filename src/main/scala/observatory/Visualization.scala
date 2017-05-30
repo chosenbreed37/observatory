@@ -1,6 +1,5 @@
 package observatory
 
-import java.awt.image.BufferedImage
 import com.sksamuel.scrimage.{Image, Pixel}
 
 /**

@@ -27,8 +27,18 @@ object Extraction {
 
   }
 
-  lazy val stationMapping: Map[Station, Location] = {
-    readLines("/stations.csv")
+  lazy val stationMapping: Map[Station, Location] = getStations("/stations.csv")
+
+  def readLines(file: String): Iterator[String] = {
+    val stream = getClass.getResourceAsStream(file)
+    scala.io.Source.fromInputStream(stream).getLines
+  }
+
+  def farenheitToCelcius(temperature: Double): Double =
+    (temperature - 32.0) * 5.0 / 9.0
+
+  def getStations(stationsFile: String): Map[Station, Location] = {
+    readLines(stationsFile)
       .map(parseStation(_))
       .filter({
         case Some(_) => true
@@ -39,34 +49,6 @@ object Extraction {
         (station -> location)
       })
       .toMap
-  }
-
-  def readLines(file: String): Iterator[String] = {
-    val stream = getClass.getResourceAsStream(file)
-    scala.io.Source.fromInputStream(stream).getLines
-  }
-
-  def farenheitToCelcius(temperature: Double): Double =
-    (temperature - 32.0) * 5.0 / 9.0
-
-  def getStations(stationsFile: String): scala.collection.mutable.Map[Station, Location] = {
-    var stations = scala.collection.mutable.Map[Station, Location]()
-    val lines = readLines(stationsFile)
-      for (line <- lines) {
-      val values = line.split(",").map(_.trim)
-      if (values.length == 4) {
-        val stn = if (values(0) != "") values(0).toInt else 0
-        val wban = if (values(1) != "") values(1).toInt else 0
-        val latOp = if (values(2) != "") Some(values(2).toDouble) else None
-        val lonOp = if (values(3) != "") Some(values(3).toDouble) else None
-        (latOp, lonOp) match {
-          case (Some(lat), Some(lon)) =>
-            stations += (Station(stn, wban) -> Location(lat, lon))
-          case _ => Unit
-        }
-      }
-    }
-    stations
   }
 
   /**
@@ -167,35 +149,18 @@ object Extraction {
     temp.sum / temp.length
   }
 
-  def average2(entries: Iterable[(LocalDate, Location, Double)]): Double = {
-    val sum = entries.foldLeft(0d)((acc, curr) => acc + curr._3)
-    sum / entries.size
-  }
-
   /**
     * @param records A sequence containing triplets (date, location, temperature)
     * @return A sequence containing, for each location, the average temperature over the year.
     */
   def locationYearlyAverageRecords(records: Iterable[(LocalDate, Location, Double)]): Iterable[(Location, Double)] = {
-    println(s"${java.time.LocalTime.now}: locationAverageRecords...")
     val result = records
       .groupBy(t => t._2)
       .map(kv => (kv._1, average(kv._2)))
-      println(s"${java.time.LocalTime.now}: locationAverageRecords...completed")
-      result
-  }
-
-  def locationYearlyAverageRecords2(records: Iterable[(LocalDate, Location, Double)]): Iterable[(Location, Double)] = {
-    println(s"${java.time.LocalTime.now}: locationAverageRecords2...")
-    val result = records
-      .groupBy(t => t._2)
-      .map(kv => (kv._1, average2(kv._2)))
-      println(s"${java.time.LocalTime.now}: locationAverageRecords2...completed")
       result
   }
 
   def locationYearlyAverageRecords3(records: Iterable[(LocalDate, Location, Double)]): Iterable[(Location, Double)] = {
-    println(s"${java.time.LocalTime.now}: locationAverageRecords3...")
     val result =
       records.foldLeft(Map[Location, Double]())((mappings: Map[Location, Double], record: (LocalDate, Location, Double)) => {
             val (_, l, t) = record
@@ -205,7 +170,6 @@ object Extraction {
               case _ => mappings + (l -> t)
             }
           })
-    println(s"${java.time.LocalTime.now}: locationAverageRecords3...completed")
     result
   }
 }
